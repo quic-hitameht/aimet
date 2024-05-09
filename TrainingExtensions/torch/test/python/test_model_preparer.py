@@ -1647,7 +1647,7 @@ class TestFX:
         # Verify Quantization workflow.
         sim = QuantizationSimModel(model_transformed, dummy_input=dummy_input)
         sim.compute_encodings(evaluate, forward_pass_callback_args=dummy_input)
-
+        print(sim)
         # Quantizer enabled for output
         assert sim.model.module_batch_norm.output_quantizers[0].enabled
         assert sim.model.module_batch_norm_1.output_quantizers[0].enabled
@@ -1925,3 +1925,34 @@ class TestFX:
                     assert inp_quant.enabled == False
                 for out_quant in wrapper.output_quantizers:
                     assert out_quant.enabled == True
+
+    def test_fx_with_functional_layernorm(self):
+        """ test torch fx with function layernorm """
+        class ModelWithFunctionalLN(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(4, 4)
+                self.weight = torch.randn(4)
+                self.bias = torch.randn(4)
+            def forward(self, inputs):
+                x = self.linear(inputs)
+                return torch.nn.functional.layer_norm(x, (4, ), weight=x[0, :], bias=x[0, :])
+
+        dummy_input = torch.randn(1, 4)
+        model = ModelWithFunctionalLN().eval()
+        model_transformed = prepare_model(model)
+
+        # Compare output.
+        with torch.no_grad():
+            assert torch.equal(model_transformed(dummy_input), model(dummy_input))
+
+        # Verify that the modules are added correctly
+        assert isinstance(model_transformed.module_layer_norm, elementwise_ops.LayerNorm)
+
+        # Verify Quantization workflow.
+        sim = QuantizationSimModel(model_transformed, dummy_input=dummy_input)
+        sim.compute_encodings(evaluate, forward_pass_callback_args=dummy_input)
+        print(sim)
+
+        # Quantizer enabled for output
+        assert sim.model.module_layer_norm.output_quantizers[0].enabled

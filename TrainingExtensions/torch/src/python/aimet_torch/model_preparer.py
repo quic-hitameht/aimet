@@ -206,6 +206,7 @@ functional_with_stateless_api = {
     'norm'                      : elementwise_ops.Norm,
     'batch_norm'                : elementwise_ops.BatchNorm,
     'group_norm'                : elementwise_ops.GroupNorm,
+    'layer_norm'                : elementwise_ops.LayerNorm,
     'mean'                      : elementwise_ops.Mean,
     'pow'                       : elementwise_ops.Pow,
     'where'                     : elementwise_ops.Where,
